@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>防控系统管理页面</title>
+    <!-- 一.引入资源 -->
+    <!--引入高德api-->
+    <script type="text/javascript">
+        window._AMapSecurityConfig = {
+            securityJsCode: "e6e2f158074d0140a466ac3ca8fc99a0",
+        };
+    </script>
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css">
+    <script src="https://webapi.amap.com/loader.js"></script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=c1c288c9aa469846f04f3abf4003e31a">
+    </script>
+    <script src="../js/store.js"></script>
+    <!-- 三.设置地图样式 -->
+    <style>
+        /* 页面整体布局 */
+        html,
+        body,
+        #container {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 去掉高德的logo */
+        .amap-logo {
+            display: none !important;
+            ;
+        }
+
+        .amap-copyright {
+            bottom: -100px;
+            display: none !important;
+            ;
+        }
+
+        /* 搜索框的样式*/
+
+        #panel {
+            position: absolute;
+            background-color: white;
+            max-height: 90%;
+            overflow-y: auto;
+            top: 10px;
+            right: 10px;
+            width: 280px;
+        }
+
+
+        .input-card {
+            position: fixed;
+            bottom: 20px;
+        }
+
+        .route-card {
+            right: 20px;
+        }
+
+        .marker-card {
+            right: 150px;
+            /* 添加一些间距 */
+        }
+
+        .input-card {
+            width: 10rem;
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            margin-right: 10px;
+            /* 添加间距 */
+        }
+
+        .input-item,
+        .input-item1 {
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffffff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        .btn:active {
+            background-color: #004280;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 二.创建地图容器 -->
+
+
+    <div id="container"></div>
+    <div class="input-card route-card">
+        <div class="input-item">
+            <button class="btn" onclick="startAnimation()">指引路线</button>
+        </div>
+    </div>
+
+    <div class="input-card marker-card">
+        <div class="input-item">
+            <button class="btn" onclick="removeMarker()">移除标记</button>
+        </div>
+    </div>
+    <!-- 四.加载地图 -->
+    <script>
+        //声明一个变量
+        var map = new AMap.Map('container', {
+            center: [113.266947, 35.188360],
+            zoom: 17,
+            viewMode: '3D',
+            pitch: 60,
+        })
+        function removeMarker() {
+            removeData(geojson.toGeoJSON())
+
+        }
+        // 五.加载控件
+        // 5.1安装插件
+        AMap.plugin([
+
+            'AMap.ToolBar',//工具条
+            'AMap.Scale',//比例尺
+            'AMap.ControlBar',
+            'AMap.GeoJSON',
+            'AMap.Riding',
+            'AMap.InfoWindow'
+        ], function () {
+            //ToolBar集成了缩放,平移,定位
+            // 5.2添加控件
+            map.addControl(new AMap.ToolBar({
+                position: {
+                    top: '80px',
+                    right: '40px'
+                }
+            }))
+
+            map.addControl(new AMap.Scale())
+
+            map.addControl(new AMap.ControlBar())
+        })
+        var geojson = new AMap.GeoJSON({
+            geoJSON: null,
+        })
+        //如果存在数据，那么导入数据
+        if (JSON.stringify(getData()) != '[]') {
+            //导入数据
+            geojson.importData(getData())
+        }
+        console.log('geojson', geojson);
+        map.add(geojson)
+
+        //监听地图的点击事件
+        map.on('click', function (e) {
+            var marker = new AMap.Marker({
+                position: e.lnglat,
+            })
+            map.add(marker)
+            console.log(marker.getPosition());
+            geojson.addOverlay(marker)
+            console.log('geojson', geojson); //点击后对比一下_overlays，_overlays存点击的点数据
+            //保存数据(将geojson对象转换成标准的GeoJSON格式对象)
+            saveData(geojson.toGeoJSON())
+        })
+
+        function startAnimation() {
+            // console.log("开始动画");
+            //实现路径规划
+            AMap.plugin('AMap.Driving', function () {
+                var driving = new AMap.Riding({
+                    map: map,
+                    policy: AMap.DrivingPolicy.LEAST_DISTANCE,
+                })
+                //设置起点和终点
+                //南门113.263779,35.183783
+                //西门113.257578,35.186825
+                //东门113.275368,35.189068
+                //体育场113.273336,35.190261
+
+                geojson.eachOverlay(function (item) {
+                    //start是消防栓
+                    //end是火灾点
+                    var south = new AMap.LngLat(113.263779, 35.183783)
+                    var east = new AMap.LngLat(113.257578, 35.186825)
+                    var west = new AMap.LngLat(113.275368, 35.189068)
+                    var Security = new AMap.LngLat(113.266674, 35.188908)//保安处
+
+
+                    var end = item.getPosition()
+                    var dissouth = AMap.GeometryUtil.distance(south, end);
+                    var diseast = AMap.GeometryUtil.distance(east, end);
+                    var diswest = AMap.GeometryUtil.distance(west, end);
+                    var disSecurity = AMap.GeometryUtil.distance(Security, end);
+
+                    // 将距离和对应的点放入数组
+                    var distances = [dissouth, diseast, diswest, disSecurity];
+                    var points = [south, east, west, Security];
+                    var peoples = ['张三', '李四', '王五', '赵六'];
+                    const phoneNumbers = [
+                        "137-8452-69xx",
+                        "186-3209-57xx",
+                        "159-7346-20xx",
+                        "130-5672-94xx"
+                    ];
+                    // 找到最小距离对应的点
+                    var minDistance = Math.min(...distances);
+                    var closestPointIndex = distances.indexOf(minDistance);
+                    var start = points[closestPointIndex];
+                    var people = peoples[closestPointIndex];
+                    var phonenum = phoneNumbers[closestPointIndex]
+                    var imagePath = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSfW8x_U_4nUel5Ly5i3lOrjg6gUkBHmI0DvIQHw77W99wAHKEK";
+                    console.log(start, people, phonenum);
+                    driving.search(start, end, function (status, result) {
+                        if (status == 'complete') {
+                            // 创建信息窗口，并使用模板字符串将姓名和电话号码填充到内容中
+                            var infoWindow = new AMap.InfoWindow({
+                                content: `<div><strong>姓名：</strong>${people}</div>
+                                            <div><strong>电话：</strong>${phonenum}</div>
+                                            <div><img style="float:left;width:auto;height:auto;" src="${imagePath}"/></div>`,
+                                anchor: 'bottom-center'
+                            });
+                            // 在地图上打开信息窗体
+                            infoWindow.open(map, start);
+
+                        }
+                        else {
+                            console.log('error');
+                        }
+                    })
+                });
+
+
+
+            })
+        }
+    </script>
+
+</body>
+
+</html>

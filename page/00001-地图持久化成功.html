@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地图参数</title>
+    <!-- 一.引入资源 -->
+    <!--引入高德api-->
+    <script type="text/javascript">
+        window._AMapSecurityConfig = {
+            securityJsCode: "e6e2f158074d0140a466ac3ca8fc99a0",
+        };
+    </script>
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css">
+    <script src="https://webapi.amap.com/loader.js"></script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=c1c288c9aa469846f04f3abf4003e31a">
+    </script>
+    <script src="../js/store.js"></script>
+    <!-- 三.设置地图样式 -->
+    <style>
+        /* 页面整体布局 */
+        html,
+        body,
+        #container {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 去掉高德的logo */
+        .amap-logo {
+            display: none !important;
+            ;
+        }
+
+        .amap-copyright {
+            bottom: -100px;
+            display: none !important;
+            ;
+        }
+
+        /* 搜索框的样式*/
+
+        #panel {
+            position: absolute;
+            background-color: white;
+            max-height: 90%;
+            overflow-y: auto;
+            top: 10px;
+            right: 10px;
+            width: 280px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 二.创建地图容器 -->
+
+
+    <div id="container"></div>
+    <div class="info">点击地图标注地点</div>
+    <!-- 四.加载地图 -->
+    <script>
+        //"HH:MM:SS" 的字符串转化为毫秒
+        function timeStringToMilliseconds(timeString) {
+            // 将时间字符串按冒号分割成小时、分钟和秒的部分
+            var timeParts = timeString.split(":");
+
+            // 将小时、分钟和秒分别转换为毫秒
+            var hoursInMs = parseInt(timeParts[0]) * 60 * 60 * 1000;
+            var minutesInMs = parseInt(timeParts[1]) * 60 * 1000;
+            var secondsInMs = parseInt(timeParts[2]) * 1000;
+
+            // 将所有部分的毫秒相加得到总毫秒数
+            var totalMilliseconds = hoursInMs + minutesInMs + secondsInMs;
+
+            return totalMilliseconds;
+        }
+
+        //获得当前时间
+
+        function getCurrentTime() {
+            // 创建一个 Date 对象来获取当前时间
+            var currentTime = new Date();
+
+            // 获取当前时间的小时、分钟和秒数
+            var hours = ('0' + currentTime.getHours()).slice(-2);
+            var minutes = ('0' + currentTime.getMinutes()).slice(-2);
+            var seconds = ('0' + currentTime.getSeconds()).slice(-2);
+
+            // 格式化时间为 "HH:MM:SS" 的字符串
+            var formattedTime = hours + ':' + minutes + ':' + seconds;
+            return formattedTime
+            // 输出当前时间
+            // console.log("当前时间：" + formattedTime);
+        }
+        // 每秒钟执行一次 getCurrent数
+        var nowTime = getCurrentTime()
+        //声明一个map变量
+        var map = new AMap.Map('container', {
+            center: [113.266947, 35.188360],
+            zoom: 17,
+            viewMode: '3D',
+            pitch: 60,
+        })
+        // 五.加载控件
+        // 5.1安装插件
+        AMap.plugin([
+
+            'AMap.ToolBar',//工具条
+            'AMap.Scale',//比例尺
+            'AMap.ControlBar',
+            'AMap.GeoJSON',
+            'AMap.InfoWindow'
+        ], function () {
+            //ToolBar集成了缩放,平移,定位
+            // 5.2添加控件
+            map.addControl(new AMap.ToolBar())
+
+            map.addControl(new AMap.Scale())
+
+            map.addControl(new AMap.ControlBar())
+
+        })
+        var geojson = new AMap.GeoJSON({
+            geoJSON: null,
+        })
+        //地图加载操作
+        // 如果存在数据，那么导入数据
+        if (JSON.stringify(getData()) != '[]') {
+            //导入数据
+            geojson.importData(getData())
+            //恢复旧数据的点击事件
+            geojson.eachOverlay(function (item) {
+                // item.on('click', function (e) {
+                //超过时效窗口
+                var infowindow_error = new AMap.InfoWindow({
+                    anchor: 'top-center',
+                    content: `<div><span style="color: red;">${nowTime}已经超过安全检查时间</div>`
+                    // 注意字符串的写法
+                });
+                //按时检查窗口
+                var infowindow_right = new AMap.InfoWindow({
+                    anchor: 'top-center',
+                    content: `<div>${nowTime} 楼栋负责人已完成消防检查，确认无问题</div>`
+                    // 注意字符串的写法
+                });
+                function updateIcon() {
+
+                    marker.setIcon('//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-red.png')
+                }
+                //查看标记内是否超过安全检查时间
+                var ext = item.getExtData()
+                var time = ext._geoJsonProperties.time
+                Time = timeStringToMilliseconds(time) - timeStringToMilliseconds(nowTime)
+                if (Time > 5) {
+                    item.updateIcon()
+                    infowindow_error.open(map, item.getPosition())
+
+                }
+
+                else {
+                    infowindow_right.open(map, item.getPosition())
+                }
+
+
+                // }
+                // )
+            }
+            )
+            console.log('geojson', geojson);
+            map.add(geojson)
+        }
+        //监听地图的点击事件
+        map.on('click', function (e) {
+            var marker = new AMap.Marker({
+                position: e.lnglat,
+                //给marker添加属性
+                extData: {
+                    _geoJsonProperties: {
+                        gid: geojson.getOverlays().length + 1,
+                        click: 0,
+                        time: `${nowTime}`
+                    }
+                }
+            })
+            marker.on('click', function (e) {
+
+                // var ext = item.getExtData();
+                // var click = ++ext._geoJsonProperties.click;
+                // 输出当前时间
+                var infowindow = new AMap.InfoWindow({
+                    anchor: 'top-center',
+                    content: `<div>${nowTime} 楼栋负责人已完成消防检查，确认无问题</div>`
+                    // 注意字符串的写法
+                });
+                infowindow.open(map, marker.getPosition())
+                saveData(geojson.toGeoJSON());
+                // console.log(nowTime + '楼栋负责人已完成消防检查，确认无问题');
+            });
+            //通过geojson对象管理覆盖物
+            geojson.addOverlay(marker)
+            console.log('geojson', geojson); //点击后对比一下_overlays，_overlays存点击的点数据
+            //保存数据(将geojson对象转换成标准的GeoJSON格式对象)
+            saveData(geojson.toGeoJSON())
+        })
+    </script>
+
+</body>
+
+</html>

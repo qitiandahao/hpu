@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>途径点</title>
+    <!-- 一.引入资源 -->
+    <!--引入高德api-->
+    <script type="text/javascript">
+        window._AMapSecurityConfig = {
+            securityJsCode: "e6e2f158074d0140a466ac3ca8fc99a0",
+        };
+    </script>
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css">
+    <script src="https://webapi.amap.com/loader.js"></script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=c1c288c9aa469846f04f3abf4003e31a">
+    </script>
+    <script src="../js/store.js"></script>
+    <!-- 三.设置地图样式 -->
+    <style>
+        /* 页面整体布局 */
+        html,
+        body,
+        #container {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 去掉高德的logo */
+        .amap-logo {
+            display: none !important;
+            ;
+        }
+
+        .amap-copyright {
+            bottom: -100px;
+            display: none !important;
+            ;
+        }
+
+        /* 搜索框的样式*/
+
+        #panel {
+            position: absolute;
+            background-color: white;
+            max-height: 90%;
+            overflow-y: auto;
+            top: 10px;
+            right: 10px;
+            width: 280px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 二.创建地图容器 -->
+
+
+    <div id="container"></div>
+    <div class="input-card" style="width:10rem">
+        <h4>推荐浏览的路线</h4>
+        <div class="input-item">
+            <button class="btn" onclick="startAnimation()">开始动画</button>
+        </div>
+    </div>
+    <!-- 四.加载地图 -->
+    <script>
+        //声明一个变量
+        var map = new AMap.Map('container', {
+            center: [113.266947, 35.188360],
+            zoom: 17,
+            viewMode: '3D',
+            pitch: 60,
+        })
+        // 五.加载控件
+        // 5.1安装插件
+        AMap.plugin([
+
+            'AMap.ToolBar',//工具条
+            'AMap.Scale',//比例尺
+            'AMap.ControlBar',
+            'AMap.GeoJSON',
+            'AMap.MoveAnimation'
+        ], function () {
+            //ToolBar集成了缩放,平移,定位
+            // 5.2添加控件
+            map.addControl(new AMap.ToolBar({
+                position: {
+                    top: '80px',
+                    right: '40px'
+                }
+            }))
+
+            map.addControl(new AMap.Scale())
+
+            map.addControl(new AMap.ControlBar())
+        })
+        //数据持久化
+        var geojson = new AMap.GeoJSON({
+            geoJSON: null,
+        })
+
+        //如果存在数据，那么导入数据
+        if (JSON.stringify(getData()) != '[]') {
+            //导入数据
+            geojson.importData(getData())
+        }
+
+        map.add(geojson)
+
+        //监听地图的点击事件
+        map.on('click', function (e) {
+            var marker = new AMap.Marker({
+                position: e.lnglat,
+                extData: {
+                    _geoJsonProperties: {
+                        gid: geojson.getOverlays().length + 1,
+                    },
+                },
+            })
+            //通过geojson对象管理覆盖物
+            geojson.addOverlay(marker)
+            console.log('geojson', geojson); //点击后对比一下_overlays，_overlays存点击的点数据
+            //保存数据(将geojson对象转换成标准的GeoJSON格式对象)
+            saveData(geojson.toGeoJSON())
+        })
+        //监听地图的点击事件
+        function startAnimation() {
+            // console.log("开始动画");
+            //实现路径规划
+            AMap.plugin('AMap.Driving', function () {
+                var driving = new AMap.Driving({
+                    map: map,
+                    policy: AMap.DrivingPolicy.LEAST_TIME,
+                })
+                //设置起点和终点
+                //南门113.263779,35.183783
+                //西门113.257578,35.186825
+                //东门113.275368,35.189068
+                //体育场113.273336,35.190261
+
+
+                // 起始点
+
+                var start = new AMap.LngLat(113.263779, 35.183783)
+                var end = new AMap.LngLat(113.273336, 35.190261)
+                // var dis = AMap.GeometryUtil.distance(start, end);
+                // console.log(dis);
+                var opts = {
+                    waypoints: []
+                }
+                geojson.eachOverlay(function (item) {
+                    // console.log(item);
+                    opts.waypoints.push(item.getPosition())
+                })
+                driving.search(start, end, opts, function (status, result) {
+                    if (status == 'complete') {
+                        // console.log('ok');
+                        //实现轨迹的模拟
+                        console.log(result);
+                        var lineArr = []
+                        result.routes[0].steps.forEach(function (item) {
+                            lineArr.push(...item.path)
+                        })
+
+                        var marker = new AMap.Marker({
+                            map: map,
+                            position: start,
+                            icon: 'https://a.amap.com/jsapi_demos/static/demo-center-v2/car.png',
+                            offset: new AMap.Pixel(-26, -13),
+                            autoRotation: true,
+                        })
+                        //绘制小车路线
+                        var passedPolyline = new AMap.Polyline({
+                            map: map,
+                            strokeColor: '#AF5',
+                            strokeWeight: 6,
+                        })
+                        // 小车路线与小车相合
+                        marker.on('moving', function (e) {
+                            passedPolyline.setPath(e.passedPath)
+                        })
+                        map.setFitView()
+                        marker.moveAlong(lineArr, {
+                            duration: 500,
+                            autoRotation: true
+                        })
+                    }
+                    else {
+                        console.log('error');
+                    }
+                })
+            })
+        }
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地图参数</title>
+    <!-- 一.引入资源 -->
+    <!--引入高德api-->
+    <script type="text/javascript">
+        window._AMapSecurityConfig = {
+            securityJsCode: "e6e2f158074d0140a466ac3ca8fc99a0",
+        };
+    </script>
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css">
+    <script src="https://webapi.amap.com/loader.js"></script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=c1c288c9aa469846f04f3abf4003e31a">
+    </script>
+    <!-- 三.设置地图样式 -->
+    <style>
+        /* 页面整体布局 */
+        html,
+        body,
+        #container {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 去掉高德的logo */
+        .amap-logo {
+            display: none !important;
+            ;
+        }
+
+        .amap-copyright {
+            bottom: -100px;
+            display: none !important;
+            ;
+        }
+
+        /* 搜索框的样式*/
+
+        #panel {
+            position: absolute;
+            background-color: white;
+            max-height: 90%;
+            overflow-y: auto;
+            top: 10px;
+            right: 10px;
+            width: 280px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 二.创建地图容器 -->
+
+
+    <div id="container"></div>
+    <!-- <div class="info">点击地图标注地点</div> -->
+    <!-- 四.加载地图 -->
+    <script>
+        //声明一个变量
+        var map = new AMap.Map('container', {
+            center: [113.266947, 35.188360],
+            zoom: 17,
+            viewMode: '3D',
+            pitch: 60,
+        })
+        // 五.加载控件
+        // 5.1安装插件
+        AMap.plugin(
+            [
+                "AMap.ToolBar",
+                "AMap.Scale",
+                "AMap.HawkEye",
+                "AMap.MapType",
+                // "AMap.Geolocation",
+                "AMap.ControlBar",
+            ],
+            function () {
+                //添加工具条控件，工具条控件集成了缩放、平移、定位等功能按钮在内的组合控件
+                map.addControl(new AMap.ToolBar());
+
+                //添加比例尺控件，展示地图在当前层级和纬度下的比例尺
+                map.addControl(new AMap.Scale());
+
+                //添加鹰眼控件，在地图右下角显示地图的缩略图
+                map.addControl(new AMap.HawkEye({ isOpen: true }));
+
+                //添加类别切换控件，实现默认图层与卫星图、实施交通图层之间切换的控制
+                map.addControl(new AMap.MapType());
+
+                // //添加定位控件，用来获取和展示用户主机所在的经纬度位置
+                // map.addControl(new AMap.Geolocation());
+
+                //添加控制罗盘控件，用来控制地图的旋转和倾斜
+                map.addControl(new AMap.ControlBar());
+            }
+        );
+
+        //监听地图的点击事件
+        // map.on('click', function (e) {
+        //     var marker = new AMap.Marker({
+        //         position: e.lnglat,
+        //     })
+        //     map.add(marker)
+        // })
+
+    </script>
+
+</body>
+
+</html>
